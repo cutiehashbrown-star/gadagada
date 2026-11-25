@@ -1,0 +1,1399 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>梯度下降下山记 · 蛋小黑的山谷探险</title>
+<style>
+:root{
+  --bg:#f6f4ec; --ink:#23322e; --ink-2:#5a6b64; --line:#e3ded0;
+  --panel:#ffffff; --accent:#e2703a; --accent-soft:#fbe7dc;
+  --green:#2f7d5b; --green-soft:#e2f0e6; --warn:#c94a3d; --gold:#c99a2e;
+  --radius:16px; --shadow:0 6px 22px rgba(40,60,50,.08);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:radial-gradient(1200px 600px at 15% -10%, #fdf7e9 0%, var(--bg) 55%, #eef2ea 100%);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  font-size:15px; line-height:1.6; min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+.app{max-width:1320px;margin:0 auto;padding:18px 20px 40px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:6px 2px 16px}
+.brand{display:flex;align-items:center;gap:12px}
+.egg-mark{width:38px;height:44px;border-radius:50% 50% 48% 48%/58% 58% 42% 42%;background:linear-gradient(160deg,#3a4247,#23282b);position:relative;flex:none;box-shadow:inset -4px -6px 10px rgba(0,0,0,.35)}
+.egg-mark::after{content:"";position:absolute;left:9px;top:9px;width:10px;height:14px;border-radius:50%;background:rgba(255,255,255,.45);filter:blur(1px)}
+.brand h1{font-size:19px;margin:0;letter-spacing:.5px}
+.brand p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.top-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.progress{font-size:13px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:999px;padding:6px 12px}
+.progress b{color:var(--green);font-size:14px}
+button{font-family:inherit;font-size:14px;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;transition:transform .08s ease, box-shadow .15s ease, background .15s ease}
+button:hover{box-shadow:0 3px 10px rgba(40,60,50,.1)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.primary:hover{background:#d2602c}
+button.ghost{background:transparent}
+main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;align-items:start}
+.stage-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 12px;min-width:0}
+.stage-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.stage-head h2{margin:0;font-size:17px;display:inline-block}
+.badge{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:999px;background:var(--green-soft);color:var(--green);margin-right:8px;vertical-align:2px;font-weight:600}
+.badge.challenge{background:#fdf0dc;color:#a9741a}
+.badge.compare{background:#e7eefb;color:#3a5c9e}
+.badge.diagnose{background:#f7e6f3;color:#8e3a76}
+.stage-head p{margin:0;font-size:13px;color:var(--ink-2);max-width:52ch}
+.canvas-box{position:relative;width:100%;aspect-ratio:16/10;border-radius:12px;overflow:hidden;background:#eef3ea;border:1px solid var(--line)}
+.canvas-box canvas{display:block;width:100%;height:100%}
+.formula{margin-top:12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--ink-2)}
+.formula code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#f3f5ef;border:1px solid var(--line);border-radius:8px;padding:4px 10px;color:#31544a;font-size:13px}
+.panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+.lr-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.lr-head label{font-size:13px;color:var(--ink-2);font-weight:600}
+#lrVal{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:20px;font-weight:700;color:var(--accent)}
+input[type=range]{--t1:40%;--t2:70%;width:100%;-webkit-appearance:none;appearance:none;height:26px;background:transparent;margin:2px 0 0;cursor:pointer}
+input[type=range]:disabled{opacity:.5;cursor:not-allowed}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:6px;background:linear-gradient(to right,#cfe3d5 0%,#cfe3d5 var(--t1),#ffe6b8 var(--t1),#ffe6b8 var(--t2),#f7cbc4 var(--t2),#f7cbc4 100%)}
+input[type=range]::-moz-range-track{height:10px;border-radius:6px;background:linear-gradient(to right,#cfe3d5 0%,#cfe3d5 var(--t1),#ffe6b8 var(--t1),#ffe6b8 var(--t2),#f7cbc4 var(--t2),#f7cbc4 100%)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-6px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.18)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--accent)}
+.lr-band{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-2);margin-top:2px}
+.lr-hint{font-size:12.5px;color:var(--ink-2);margin:8px 0 0;min-height:36px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btns .primary{grid-column:span 2;padding:12px;font-size:15px}
+.readout{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px}
+.readout div{background:#f7f8f3;border-radius:10px;padding:7px 10px}
+.readout span{display:block;font-size:11.5px;color:var(--ink-2)}
+.readout b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:15px;color:#2b3f39}
+.chart-box{height:96px;background:#f7f8f3;border-radius:10px;overflow:hidden}
+.chart-box canvas{display:block;width:100%;height:100%}
+.verdict{border-radius:12px;padding:11px 13px;font-size:13.5px;line-height:1.55;border:1px solid transparent}
+.verdict.ok{background:var(--green-soft);border-color:#bcdcc7;color:#1f5b41}
+.verdict.bad{background:#fdeeea;border-color:#f4cdc4;color:#8f3527}
+.verdict.info{background:#eef2fb;border-color:#cfdbf2;color:#33507f}
+.verdict b{display:block;margin-bottom:2px;font-size:14px}
+.levels{display:grid;gap:6px}
+.levels .lv{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:13px;text-align:left;width:100%}
+.levels .lv:hover{background:#faf9f4}
+.levels .lv.active{border-color:var(--accent);background:var(--accent-soft)}
+.levels .lv .no{width:22px;height:22px;flex:none;border-radius:50%;background:#eef1e9;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink-2)}
+.levels .lv.done .no{background:var(--green);color:#fff}
+.levels .lv .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.levels .lv .st{font-size:11px;color:var(--ink-2)}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:rgba(35,50,46,.9);color:#fff;font-size:13px;padding:8px 16px;border-radius:999px;pointer-events:none;opacity:0;transition:opacity .25s ease}
+.toast.show{opacity:1}
+.diag{position:absolute;inset:auto 12px 12px 12px;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:0 10px 30px rgba(30,50,40,.18)}
+.diag h4{margin:0 0 4px;font-size:14px}
+.diag p{margin:0 0 10px;font-size:12.5px;color:var(--ink-2)}
+.diag .opts{display:flex;gap:8px;flex-wrap:wrap}
+.diag .opts button{flex:1;min-width:150px;font-size:13px;padding:9px 10px}
+.modal{position:fixed;inset:0;background:rgba(24,36,32,.45);display:grid;place-items:center;padding:20px;z-index:50}
+.modal[hidden]{display:none}
+.modal-inner{background:#fff;border-radius:18px;max-width:640px;width:100%;max-height:82vh;overflow:auto;padding:22px 24px;box-shadow:0 20px 50px rgba(20,40,30,.3)}
+.modal-inner h3{margin:0 0 4px;font-size:17px}
+.modal-inner .sub{margin:0 0 16px;font-size:12.5px;color:var(--ink-2)}
+.modal-inner h4{margin:16px 0 6px;font-size:13.5px;color:var(--green)}
+.modal-inner ul{margin:6px 0 0;padding-left:18px;font-size:13.5px}
+.modal-inner li{margin-bottom:6px}
+.modal-close{float:right;border:none;background:#f2f4ee;width:32px;height:32px;border-radius:50%;padding:0;font-size:16px;line-height:1}
+.note-item{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+.note-item.locked{opacity:.45;filter:grayscale(1)}
+.note-item b{display:block;font-size:13.5px;margin-bottom:2px}
+.ach-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ach{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12.5px}
+.ach.locked{opacity:.4;filter:grayscale(1)}
+.ach b{display:block;font-size:13px;margin-bottom:2px;color:var(--gold)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--ink-2);flex-wrap:wrap;margin-top:10px}
+.legend i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-right:5px;vertical-align:2px}
+@media (max-width:980px){
+  main{grid-template-columns:minmax(0,1fr)}
+  .app{padding:14px 14px 30px}
+  .canvas-box{aspect-ratio:4/3}
+}
+@media print{
+  body{background:#fff}
+  .panel,.top-actions{display:none}
+  .stage-wrap{box-shadow:none;border-color:#bbb}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="egg-mark"></span>
+      <div>
+        <h1>梯度下降下山记</h1>
+        <p>帮蛋小黑从山坡走到谷底，顺便搞懂「学习率」</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span class="progress">已通关 <b id="clearCount">0</b> / 7</span>
+      <button id="btnNotes" class="ghost">探险笔记</button>
+      <button id="btnAch" class="ghost">成就</button>
+      <button id="btnHelp" class="ghost">怎么玩</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="stage-wrap">
+      <div class="stage-head">
+        <div>
+          <span class="badge" id="levelTag">入门</span>
+          <h2 id="levelName">圆形山谷</h2>
+        </div>
+        <p id="levelGoal">把蛋小黑送到谷底</p>
+      </div>
+      <div class="canvas-box">
+        <canvas id="scene"></canvas>
+        <div class="toast" id="toast"></div>
+        <div class="diag" id="diagPanel" hidden>
+          <h4 id="diagTitle">判断一下</h4>
+          <p id="diagDesc"></p>
+          <div class="opts" id="diagOpts"></div>
+        </div>
+      </div>
+      <div class="formula" id="formula"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="panel">
+      <div class="card">
+        <div class="lr-head">
+          <label for="lr">学习率 α（每步走多大）</label>
+          <output id="lrVal">0.30</output>
+        </div>
+        <input type="range" id="lr" min="0" max="1000" value="500" aria-label="学习率">
+        <div class="lr-band"><span>步子小</span><span>步子大</span></div>
+        <p class="lr-hint" id="lrHint">先随便拖一下，看看蛋小黑怎么走。</p>
+      </div>
+
+      <div class="card">
+        <div class="btns">
+          <button id="btnStep" class="primary">走一步（空格）</button>
+          <button id="btnAuto">连续走</button>
+          <button id="btnReset">重来（R）</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="readout">
+          <div><span>第几步</span><b id="rStep">0</b></div>
+          <div><span>损失值（山坡高度）</span><b id="rLoss">—</b></div>
+          <div><span>梯度大小（陡不陡）</span><b id="rGrad">—</b></div>
+          <div><span>状态</span><b id="rState">待出发</b></div>
+        </div>
+        <div class="chart-box" style="margin-top:10px"><canvas id="chart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="verdict info" id="verdict">
+          <b>出发前先看这句</b>
+          梯度指向“上坡最快”的方向，所以下山要往它的反方向走。学习率决定每步走多远。
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="levels" id="levelList"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-inner">
+    <button class="modal-close" id="modalClose">×</button>
+    <h3 id="modalTitle">标题</h3>
+    <p class="sub" id="modalSub"></p>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   1. 数学内核（core）：纯函数，不碰 DOM，不用随机
+   ========================================================= */
+var SURFACES = {};
+
+function registerSurface(def){
+  var dom = def.domain, h = 1e-5;
+  for(var i=0;i<7;i++){
+    for(var j=0;j<7;j++){
+      var x = dom.x[0] + (dom.x[1]-dom.x[0])*(0.12 + 0.76*i/6);
+      var y = dom.y[0] + (dom.y[1]-dom.y[0])*(0.12 + 0.76*j/6);
+      var nx = (def.f(x+h,y) - def.f(x-h,y))/(2*h);
+      var ny = (def.f(x,y+h) - def.f(x,y-h))/(2*h);
+      var g = def.grad(x,y);
+      var ex = Math.abs(nx-g[0])/Math.max(1, Math.abs(nx), Math.abs(g[0]));
+      var ey = Math.abs(ny-g[1])/Math.max(1, Math.abs(ny), Math.abs(g[1]));
+      if(Math.max(ex,ey) > 1e-4){
+        throw new Error('曲面 '+def.id+' 的解析梯度与 f 不一致：'+Math.max(ex,ey).toExponential(2));
+      }
+    }
+  }
+  SURFACES[def.id] = def;
+  return def;
+}
+
+registerSurface({
+  id:'bowl', name:'圆形山谷',
+  f:function(x,y){ return 0.5*(x*x + y*y); },
+  grad:function(x,y){ return [x, y]; },
+  domain:{x:[-4,4], y:[-4,4]}, start:[3,0], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'asym', name:'拉长的山谷',
+  f:function(x,y){ return x*x + 0.05*y*y*y*y; },
+  grad:function(x,y){ return [2*x, 0.2*y*y*y]; },
+  domain:{x:[-4,4], y:[-4,4]}, start:[2.5,2.5], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'ellipse', name:'狭长峡谷',
+  f:function(x,y){ return 0.5*(0.5*x*x + 2*y*y); },
+  grad:function(x,y){ return [0.5*x, 2*y]; },
+  domain:{x:[-4,4], y:[-4,4]}, start:[3,2], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'ravine', name:'极窄峡谷',
+  f:function(x,y){ return 0.5*(0.05*x*x + 2*y*y); },
+  grad:function(x,y){ return [0.05*x, 2*y]; },
+  domain:{x:[-4,4], y:[-4,4]}, start:[3,1], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'saddle', name:'马鞍陷阱',
+  f:function(x,y){ return x*x - y*y; },
+  grad:function(x,y){ return [2*x, -2*y]; },
+  domain:{x:[-2.5,2.5], y:[-2.5,2.5]}, start:[0.15,0.15], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'plateau', name:'高原平台',
+  f:function(x,y){ return 1 - Math.exp(-(x*x + y*y)/8); },
+  grad:function(x,y){ var e = Math.exp(-(x*x + y*y)/8)/4; return [x*e, y*e]; },
+  domain:{x:[-6,6], y:[-6,6]}, start:[3.5,3.5], min:[0,0], minVal:0
+});
+
+registerSurface({
+  id:'multi', name:'多谷山谷',
+  f:function(x,y){ return 0.3*(x*x + y*y) - Math.cos(2*x)*Math.cos(2*y) + 1; },
+  grad:function(x,y){
+    return [0.6*x + 2*Math.sin(2*x)*Math.cos(2*y),
+            0.6*y + 2*Math.cos(2*x)*Math.sin(2*y)];
+  },
+  domain:{x:[-4,4], y:[-4,4]}, start:[2.6,2.6], min:[0,0], minVal:0
+});
+
+/* 走一步：p 不动，返回新点 */
+function stepOnce(surface, p, lr){
+  var g = surface.grad(p[0], p[1]);
+  var np = [p[0] - lr*g[0], p[1] - lr*g[1]];
+  return { p:np, loss: surface.f(np[0], np[1]), grad: surface.grad(np[0], np[1]) };
+}
+
+/* 判定：顺序固定，不许乱 */
+function judge(steps, surface, cfg){
+  var n = steps.length, last = steps[n-1];
+  if(!Number.isFinite(last.loss) || !Number.isFinite(last.p[0]) || !Number.isFinite(last.p[1])) return 'diverged';
+  var hx = (surface.domain.x[1]-surface.domain.x[0])/2;
+  var hy = (surface.domain.y[1]-surface.domain.y[0])/2;
+  if(Math.abs(last.p[0]) > hx*3 || Math.abs(last.p[1]) > hy*3) return 'diverged';
+
+  var g = Math.hypot(last.grad[0], last.grad[1]);
+  if(last.loss <= surface.minVal + cfg.tolLoss && g <= cfg.gradTol) return 'converged';
+
+  var fx = 0, fy = 0;
+  for(var i=1;i<n;i++){
+    var a = steps[i-1].p, b = steps[i].p;
+    if(Math.sign(a[0]-surface.min[0]) !== Math.sign(b[0]-surface.min[0])) fx++;
+    if(Math.sign(a[1]-surface.min[1]) !== Math.sign(b[1]-surface.min[1])) fy++;
+  }
+  function dist(st){ return Math.hypot(st.p[0]-surface.min[0], st.p[1]-surface.min[1]); }
+  var shrinking = n >= 4 && dist(steps[n-1]) <= 0.85*dist(steps[n-4]);
+  var growing = n >= 4 && dist(steps[n-1]) > 1.3*dist(steps[n-4]);
+  if(Math.max(fx,fy) >= 3 && !shrinking && !growing) return 'oscillating';
+
+  var stall = 0;
+  for(var k=1;k<n;k++){
+    var d = Math.abs(steps[k].loss - steps[k-1].loss);
+    if(d <= 1e-4*Math.max(1, Math.abs(steps[k].loss))) stall++; else stall = 0;
+  }
+  if(stall >= 3) return 'stalled';
+  if(n-1 >= cfg.maxSteps) return 'stalled';
+  return 'running';
+}
+
+/* 一次性跑完（对比关用） */
+function runToEnd(surface, lr, cfg, maxSteps){
+  var steps = [{ t:0, p:[surface.start[0], surface.start[1]], loss: surface.f(surface.start[0], surface.start[1]), grad: surface.grad(surface.start[0], surface.start[1]) }];
+  var out = 'running';
+  var limit = maxSteps || cfg.maxSteps;
+  for(var t=1;t<=limit;t++){
+    var prev = steps[steps.length-1];
+    var nx = stepOnce(surface, prev.p, lr);
+    steps.push({ t:t, p:nx.p, loss:nx.loss, grad:nx.grad });
+    out = judge(steps, surface, cfg);
+    if(out !== 'running') break;
+  }
+  return { steps: steps, outcome: out === 'running' ? 'stalled' : out };
+}
+
+/* =========================================================
+   2. 关卡数据
+   ========================================================= */
+var LEVELS = [
+  {
+    id:'L1', name:'圆形山谷', tag:'入门', view:'1d', surfaceId:'bowl', kind:'run',
+    goal:'把蛋小黑送到谷底。试试不同的学习率：太小会磨蹭，太大会跨过谷底。',
+    lr:[0.05, 3.0], lrStart:0.3, maxSteps:20, tolLoss:1e-3, gradTol:0.05, good:[0.2, 1.72],
+    formula:['f(x, y) = ½(x² + y²)', 'x ← x − α · ∂f/∂x'],
+    hint:'这是个规规矩矩的圆碗：山坡高度就是损失，越靠谷底越小。',
+    notes:['n1','n2']
+  },
+  {
+    id:'L2', name:'拉长的山谷', tag:'进阶', view:'2d', surfaceId:'asym', kind:'run',
+    goal:'这个山谷一个方向陡、一个方向缓。找到能稳稳下去的学习率。',
+    lr:[0.05, 1.5], lrStart:0.4, maxSteps:40, tolLoss:5e-3, gradTol:0.08, good:[0.2, 0.5],
+    formula:['f(x, y) = x² + 0.05y⁴', '∂f/∂x = 2x ，∂f/∂y = 0.2y³'],
+    hint:'两个方向的坡度不一样，同一个学习率在两边效果会差很多。',
+    notes:['n3']
+  },
+  {
+    id:'L3', name:'狭长峡谷', tag:'挑战', view:'2d', surfaceId:'ellipse', kind:'run',
+    goal:'峡谷又长又窄：横向很平、纵向很陡。学习率稍大就会在两岸来回弹。',
+    lr:[0.05, 1.5], lrStart:1.0, maxSteps:40, tolLoss:1e-3, gradTol:0.05, good:[0.2, 0.9],
+    formula:['f(x, y) = ½(0.5x² + 2y²)'],
+    hint:'注意看轨迹：如果它在谷底两侧来回跳，说明步子迈太大了。',
+    notes:['n6']
+  },
+  {
+    id:'L4', name:'高原平台', tag:'挑战', view:'2d', surfaceId:'plateau', kind:'run',
+    goal:'起点在一大片几乎平坦的高地上，梯度小得可怜。想办法让蛋小黑动起来。',
+    lr:[0.2, 10.0], lrStart:0.4, maxSteps:60, tolLoss:1e-3, gradTol:0.05, good:[0.55, 7.5],
+    formula:['f(x, y) = 1 − e^(−(x²+y²)/8)'],
+    hint:'平台区几乎不倾斜，梯度接近 0，所以“正常”的学习率在这里等于原地踏步。',
+    notes:['n7']
+  },
+  {
+    id:'L5', name:'三条轨迹对比', tag:'对比', view:'2d', surfaceId:'ravine', kind:'compare',
+    goal:'同一个极窄峡谷，三种学习率同时出发。看完再点「我看明白了」。',
+    lr:[0.05, 1.5], lrStart:0.5, maxSteps:60, tolLoss:1e-3, gradTol:0.05, good:[0.1, 0.5],
+    formula:['f(x, y) = ½(0.05x² + 2y²)'],
+    hint:'同一片地形，学习率不同，命运完全不同。',
+    compareLrs:[0.05, 0.45, 1.8],
+    notes:['n5']
+  },
+  {
+    id:'L6', name:'马鞍陷阱', tag:'诊断', view:'2d', surfaceId:'saddle', kind:'diagnose',
+    goal:'先走几步观察，再判断：这里真的是谷底吗？',
+    lr:[0.1, 1.2], lrStart:0.4, maxSteps:8, tolLoss:1e-3, gradTol:0.05, good:[0.2, 0.9],
+    formula:['f(x, y) = x² − y²'],
+    hint:'一个方向往上翘，一个方向往下掉——这种地形叫鞍点。',
+    askAt:5,
+    question:{
+      title:'判断一下：蛋小黑脚下是什么？',
+      desc:'梯度确实很小，但别急着下结论。看看损失值是在下降还是不变。',
+      options:[
+        { text:'这是谷底，可以收工了', ok:false, tip:'再想想：如果是谷底，往任何方向走损失都应该变大。' },
+        { text:'这是鞍点，不是谷底', ok:true, tip:'对！一个方向向上、一个方向向下，梯度为 0 但并不是最低点。' }
+      ]
+    },
+    notes:['n9']
+  },
+  {
+    id:'L7', name:'多谷山谷', tag:'挑战', view:'2d', surfaceId:'multi', kind:'run',
+    goal:'这片地形有很多个山谷。先走到任意一个谷底，再看看它是不是最低的那个。',
+    lr:[0.05, 1.5], lrStart:0.3, maxSteps:60, tolLoss:1e-2, gradTol:0.05, good:[0.15, 0.6],
+    formula:['f(x, y) = 0.3(x²+y²) − cos(2x)cos(2y) + 1'],
+    hint:'注意：走到谷底不等于走到最低点。',
+    localWin:true,
+    notes:['n10','n11','n12']
+  }
+];
+
+/* 探险笔记（12 条） */
+var NOTES = {
+  n1:{ t:'损失函数 = 山坡高度', c:'山坡越高，说明模型错得越多；下山就是让损失变小。' },
+  n2:{ t:'梯度 = 上坡最快的方向', c:'严格说，梯度指向损失上升最快的方向，所以下山要往它的反方向走。' },
+  n3:{ t:'学习率 = 每步走多远', c:'同样的地形，步子太小要走到天黑，步子太大容易一脚跨过谷底。' },
+  n4:{ t:'太小的学习率', c:'每步只挪一点点，步数用完了还在半山腰。像下山时小碎步挪。' },
+  n5:{ t:'太大的学习率', c:'一步跨过谷底，下一步又跨回来，越弹越远，最后直接飞出地图。' },
+  n6:{ t:'不同方向坡度不同', c:'峡谷横着平、竖着陡。一个学习率很难同时照顾两边，这就是它的难处。' },
+  n7:{ t:'平台区走不动', c:'地形几乎平坦时梯度接近 0，梯度下降会以为“到了”，其实只是原地踏步。' },
+  n8:{ t:'震荡长什么样', c:'轨迹在谷底两侧来回跳，损失值忽大忽小。这时候该把学习率调小。' },
+  n9:{ t:'鞍点：梯度为 0 却不是谷底', c:'马鞍中间又平又稳，但一个方向通向更高、一个方向通向更低。' },
+  n10:{ t:'局部最小 vs 全局最小', c:'你到的那个谷可能只是附近最低，整片地形还有更低的谷。' },
+  n11:{ t:'梯度下降不保证最优', c:'它只保证“往低处走”，不保证走到最低处。起点和步长都会影响结局。' },
+  n12:{ t:'起点决定命运', c:'同样的算法，从不同地方出发可能走进不同的谷。所以真实训练里要试不同的初始值。' }
+};
+var NOTE_ORDER = ['n1','n2','n3','n4','n5','n6','n7','n8','n9','n10','n11','n12'];
+
+/* 成就 */
+var ACHS = {
+  a1:{ t:'稳定下山', c:'一次通关，全程没有震荡和飞出。' },
+  a2:{ t:'一步升天', c:'两步之内到达谷底。' },
+  a3:{ t:'龟速收敛', c:'几乎用完所有步数才到谷底。' },
+  a4:{ t:'震荡大师', c:'亲眼见证一次谷底两侧来回弹。' },
+  a5:{ t:'探险家', c:'通关全部 7 个关卡。' },
+  a6:{ t:'火眼金睛', c:'在诊断关识破鞍点陷阱。' }
+};
+
+/* =========================================================
+   3. 状态
+   ========================================================= */
+var SAVE_KEY = 'gdm_save_v1';
+var S = {
+  levelIndex: 0,
+  lr: 0.3,
+  steps: [],
+  outcome: 'running',
+  auto: false,
+  autoAcc: 0,
+  lastTs: 0,
+  display: null,
+  compare: null,
+  diagAnswered: false,
+  save: { cleared: [], achievements: [], notes: [] }
+};
+
+function loadSave(){
+  try{
+    var raw = localStorage.getItem(SAVE_KEY);
+    if(raw){
+      var o = JSON.parse(raw);
+      if(o && typeof o === 'object'){
+        S.save.cleared = Array.isArray(o.cleared) ? o.cleared : [];
+        S.save.achievements = Array.isArray(o.achievements) ? o.achievements : [];
+        S.save.notes = Array.isArray(o.notes) && o.notes.length ? o.notes : ['n1','n2'];
+      }
+    }
+  }catch(e){ /* 存档损坏就用默认值 */ }
+}
+function writeSave(){
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(S.save)); }catch(e){}
+}
+
+/* =========================================================
+   4. DOM
+   ========================================================= */
+var canvas = document.getElementById('scene');
+var ctx = canvas.getContext('2d');
+var chartCanvas = document.getElementById('chart');
+var chartCtx = chartCanvas.getContext('2d');
+var elLr = document.getElementById('lr');
+var elLrVal = document.getElementById('lrVal');
+var elLrHint = document.getElementById('lrHint');
+var elLevelName = document.getElementById('levelName');
+var elLevelTag = document.getElementById('levelTag');
+var elLevelGoal = document.getElementById('levelGoal');
+var elFormula = document.getElementById('formula');
+var elLegend = document.getElementById('legend');
+var elLevelList = document.getElementById('levelList');
+var elRStep = document.getElementById('rStep');
+var elRLoss = document.getElementById('rLoss');
+var elRGrad = document.getElementById('rGrad');
+var elRState = document.getElementById('rState');
+var elVerdict = document.getElementById('verdict');
+var elToast = document.getElementById('toast');
+var elDiag = document.getElementById('diagPanel');
+var elDiagTitle = document.getElementById('diagTitle');
+var elDiagDesc = document.getElementById('diagDesc');
+var elDiagOpts = document.getElementById('diagOpts');
+var elClearCount = document.getElementById('clearCount');
+var elBtnStep = document.getElementById('btnStep');
+var elBtnAuto = document.getElementById('btnAuto');
+var elBtnReset = document.getElementById('btnReset');
+
+function currentLevel(){ return LEVELS[S.levelIndex]; }
+function currentSurface(){ return SURFACES[currentLevel().surfaceId]; }
+
+/* =========================================================
+   5. 学习率对数映射
+   ========================================================= */
+function sliderT(){ return Number(elLr.value)/1000; }
+function tToLr(t, level){
+  var lo = Math.log10(level.lr[0]), hi = Math.log10(level.lr[1]);
+  return Math.pow(10, lo + (hi-lo)*t);
+}
+function lrToT(lr, level){
+  var lo = Math.log10(level.lr[0]), hi = Math.log10(level.lr[1]);
+  return (Math.log10(lr) - lo)/(hi-lo);
+}
+function fmtLr(v){
+  if(v < 0.1) return v.toFixed(3);
+  if(v < 1) return v.toFixed(2);
+  return v.toFixed(2);
+}
+function fmtLoss(v){
+  if(!Number.isFinite(v)) return '∞';
+  if(Math.abs(v) < 0.001 && v !== 0) return v.toExponential(1);
+  return v.toFixed(3);
+}
+
+function applyLrUi(){
+  var level = currentLevel();
+  var lr = tToLr(sliderT(), level);
+  S.lr = lr;
+  elLrVal.textContent = fmtLr(lr);
+  var t1 = Math.min(1, Math.max(0, lrToT(level.good[0], level)));
+  var t2 = Math.min(1, Math.max(0, lrToT(level.good[1], level)));
+  elLr.style.setProperty('--t1', (t1*100).toFixed(1)+'%');
+  elLr.style.setProperty('--t2', (t2*100).toFixed(1)+'%');
+  var rel = lr / level.good[0];
+  var msg;
+  if(lr < level.good[0]*0.75) msg = '步子偏小：蛋小黑会慢慢挪，注意步数够不够。';
+  else if(lr > level.good[1]*1.15) msg = '步子偏大：小心一脚跨过谷底。';
+  else msg = '这个范围看起来能稳稳走下去。';
+  elLrHint.textContent = msg;
+}
+
+/* =========================================================
+   6. 渲染
+   ========================================================= */
+var cssW = 800, cssH = 500, dpr = 1;
+var bg = null;          // { canvas, contours, vmin, vmax }
+var PAD = { l:46, r:26, t:26, b:40 };
+
+function resize(){
+  var box = canvas.parentElement.getBoundingClientRect();
+  cssW = Math.max(300, Math.floor(box.width));
+  cssH = Math.max(220, Math.floor(box.height));
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(cssW*dpr);
+  canvas.height = Math.round(cssH*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  buildBg();
+  drawChart();
+}
+
+function sampleGrid(surface, cols, rows){
+  var dom = surface.domain;
+  var vals = new Float64Array((cols+1)*(rows+1));
+  var vmin = Infinity, vmax = -Infinity;
+  for(var j=0;j<=rows;j++){
+    for(var i=0;i<=cols;i++){
+      var x = dom.x[0] + (dom.x[1]-dom.x[0])*i/cols;
+      var y = dom.y[0] + (dom.y[1]-dom.y[0])*j/rows;
+      var v = surface.f(x,y);
+      vals[j*(cols+1)+i] = v;
+      if(v < vmin) vmin = v;
+      if(v > vmax) vmax = v;
+    }
+  }
+  return { vals:vals, cols:cols, rows:rows, vmin:vmin, vmax:vmax };
+}
+
+function heat(t){
+  var stops = [
+    [0.00, [24, 84, 68]],
+    [0.30, [46, 122, 96]],
+    [0.55, [126, 182, 146]],
+    [0.75, [206, 220, 184]],
+    [1.00, [250, 248, 238]]
+  ];
+  t = Math.max(0, Math.min(1, t));
+  for(var i=1;i<stops.length;i++){
+    if(t <= stops[i][0]){
+      var a = stops[i-1], b = stops[i];
+      var k = (t-a[0])/(b[0]-a[0] || 1);
+      return [Math.round(a[1][0]+(b[1][0]-a[1][0])*k),
+              Math.round(a[1][1]+(b[1][1]-a[1][1])*k),
+              Math.round(a[1][2]+(b[1][2]-a[1][2])*k)];
+    }
+  }
+  return stops[stops.length-1][1];
+}
+
+function buildBg(){
+  var level = currentLevel();
+  if(level.view === '1d'){ bg = null; return; }
+  var surface = currentSurface();
+  var grid = sampleGrid(surface, 110, 110);
+  var w = Math.round(cssW*dpr), h = Math.round(cssH*dpr);
+  var off = document.createElement('canvas');
+  off.width = w; off.height = h;
+  var octx = off.getContext('2d');
+  var pw = Math.max(60, Math.round(cssW/2)), ph = Math.max(40, Math.round(cssH/2));
+  var tmp = document.createElement('canvas');
+  tmp.width = pw; tmp.height = ph;
+  var tctx = tmp.getContext('2d');
+  var img = tctx.createImageData(pw, ph);
+  var dom = surface.domain;
+  var span = (grid.vmax - grid.vmin) || 1;
+  for(var py=0;py<ph;py++){
+    var my = dom.y[1] - (dom.y[1]-dom.y[0])*py/(ph-1);
+    for(var px=0;px<pw;px++){
+      var mx = dom.x[0] + (dom.x[1]-dom.x[0])*px/(pw-1);
+      var v = surface.f(mx,my);
+      var c = heat((v - grid.vmin)/span);
+      var idx = (py*pw+px)*4;
+      img.data[idx] = c[0]; img.data[idx+1] = c[1]; img.data[idx+2] = c[2]; img.data[idx+3] = 255;
+    }
+  }
+  tctx.putImageData(img,0,0);
+  octx.imageSmoothingEnabled = true;
+  octx.drawImage(tmp, 0, 0, w, h);
+
+  // 等高线（矢量，另存线段）
+  var contours = [];
+  var levels = 8;
+  for(var li=1; li<levels; li++){
+    var lv = grid.vmin + span*li/levels;
+    var segs = [];
+    for(var j=0;j<grid.rows;j++){
+      for(var i=0;i<grid.cols;i++){
+        var v00 = grid.vals[j*(grid.cols+1)+i];
+        var v10 = grid.vals[j*(grid.cols+1)+i+1];
+        var v11 = grid.vals[(j+1)*(grid.cols+1)+i+1];
+        var v01 = grid.vals[(j+1)*(grid.cols+1)+i];
+        var ax = dom.x[0] + (dom.x[1]-dom.x[0])*i/grid.cols;
+        var bx = dom.x[0] + (dom.x[1]-dom.x[0])*(i+1)/grid.cols;
+        var ay = dom.y[0] + (dom.y[1]-dom.y[0])*j/grid.rows;
+        var by = dom.y[0] + (dom.y[1]-dom.y[0])*(j+1)/grid.rows;
+        var pts = [];
+        if((v00<lv) !== (v10<lv)) pts.push([ax + (bx-ax)*(lv-v00)/((v10-v00)||1), ay]);
+        if((v10<lv) !== (v11<lv)) pts.push([bx, ay + (by-ay)*(lv-v10)/((v11-v10)||1)]);
+        if((v11<lv) !== (v01<lv)) pts.push([ax + (bx-ax)*(lv-v11)/((v01-v11)||1), by]);
+        if((v01<lv) !== (v00<lv)) pts.push([ax, ay + (by-ay)*(lv-v01)/((v00-v01)||1)]);
+        if(pts.length >= 2) segs.push([pts[0], pts[1]]);
+        if(pts.length === 4) segs.push([pts[2], pts[3]]);
+      }
+    }
+    contours.push(segs);
+  }
+  bg = { canvas:off, contours:contours };
+}
+
+function mapTopo(surface, x, y){
+  var dom = surface.domain;
+  var w = cssW - PAD.l - PAD.r, h = cssH - PAD.t - PAD.b;
+  return [PAD.l + (x-dom.x[0])/(dom.x[1]-dom.x[0])*w,
+          PAD.t + (1 - (y-dom.y[0])/(dom.y[1]-dom.y[0]))*h];
+}
+
+function drawTopo(){
+  var surface = currentSurface();
+  if(bg) ctx.drawImage(bg.canvas, 0, 0, cssW, cssH);
+  if(bg){
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,.42)';
+    ctx.lineWidth = 1;
+    for(var i=0;i<bg.contours.length;i++){
+      var segs = bg.contours[i];
+      ctx.beginPath();
+      for(var s=0;s<segs.length;s++){
+        var a = mapTopo(surface, segs[s][0][0], segs[s][0][1]);
+        var b = mapTopo(surface, segs[s][1][0], segs[s][1][1]);
+        ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // 谷底标记
+  var mn = mapTopo(surface, surface.min[0], surface.min[1]);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,.85)';
+  ctx.lineWidth = 1.6;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(mn[0], mn[1], 13, 0, Math.PI*2); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function mapProfile(surface, x, v, vTop){
+  var w = cssW - PAD.l - PAD.r, h = cssH - PAD.t - PAD.b;
+  var dom = surface.domain;
+  return [PAD.l + (x-dom.x[0])/(dom.x[1]-dom.x[0])*w,
+          PAD.t + h - (v/vTop)*h*0.9];
+}
+
+function drawProfile(){
+  var surface = currentSurface();
+  var dom = surface.domain;
+  var N = 220, samples = [];
+  var vTop = profileTop(surface);
+  for(var i=0;i<=N;i++){
+    var x = dom.x[0] + (dom.x[1]-dom.x[0])*i/N;
+    samples.push([x, surface.f(x,0)]);
+  }
+
+  // 天空
+  var sky = ctx.createLinearGradient(0,0,0,cssH);
+  sky.addColorStop(0,'#eaf3fb'); sky.addColorStop(1,'#f7f8ef');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0,0,cssW,cssH);
+
+  // 山坡
+  ctx.beginPath();
+  var start = mapProfile(surface, dom.x[0], 0, vTop);
+  ctx.moveTo(start[0], PAD.t + (cssH-PAD.t-PAD.b));
+  for(var k=0;k<samples.length;k++){
+    var pt = mapProfile(surface, samples[k][0], samples[k][1], vTop);
+    ctx.lineTo(pt[0], pt[1]);
+  }
+  var end = mapProfile(surface, dom.x[1], 0, vTop);
+  ctx.lineTo(end[0], PAD.t + (cssH-PAD.t-PAD.b));
+  ctx.closePath();
+  var g = ctx.createLinearGradient(0, PAD.t, 0, cssH-PAD.b);
+  g.addColorStop(0,'#cfe6d4'); g.addColorStop(1,'#7fbe97');
+  ctx.fillStyle = g; ctx.fill();
+  ctx.strokeStyle = '#4d8f6c'; ctx.lineWidth = 2.4; ctx.stroke();
+
+  // 谷底线
+  var bot = mapProfile(surface, surface.min[0], surface.min[1], vTop);
+  ctx.save();
+  ctx.setLineDash([5,5]); ctx.strokeStyle = 'rgba(47,125,91,.45)'; ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.moveTo(PAD.l, bot[1]); ctx.lineTo(cssW-PAD.r, bot[1]); ctx.stroke();
+  ctx.restore();
+
+  // 坐标提示
+  ctx.fillStyle = 'rgba(60,80,70,.55)';
+  ctx.font = '12px system-ui,sans-serif';
+  ctx.fillText('位置 →', cssW-PAD.r-52, cssH-12);
+  ctx.save();
+  ctx.translate(14, PAD.t+70);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText('山坡高度（损失）', 0, 0);
+  ctx.restore();
+}
+
+function drawTrail(){
+  var level = currentLevel();
+  var surface = currentSurface();
+  var steps = S.steps;
+
+  function pt(st){
+    if(level.view === '1d'){
+      var vTop = profileTop(surface);
+      return mapProfile(surface, st.p[0], surface.f(st.p[0],0), vTop);
+    }
+    return mapTopo(surface, st.p[0], st.p[1]);
+  }
+
+  if(level.kind === 'compare' && S.compare){
+    var colors = ['#3a7bd5','#e2703a','#c94a3d'];
+    for(var c=0;c<S.compare.length;c++){
+      var run = S.compare[c];
+      ctx.save();
+      ctx.strokeStyle = colors[c];
+      ctx.lineWidth = 2.6;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      for(var i=0;i<run.steps.length;i++){
+        var q = pt(run.steps[i]);
+        if(i===0) ctx.moveTo(q[0],q[1]); else ctx.lineTo(q[0],q[1]);
+      }
+      ctx.stroke();
+      var last = run.steps[run.steps.length-1];
+      var lq = pt(last);
+      ctx.beginPath(); ctx.arc(lq[0], lq[1], 5, 0, Math.PI*2);
+      ctx.fillStyle = colors[c]; ctx.fill();
+      ctx.restore();
+    }
+    return;
+  }
+
+  if(!steps.length) return;
+
+  // 普通轨迹
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.strokeStyle = 'rgba(255,255,255,.85)';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  for(var a=0;a<steps.length;a++){
+    var pa = pt(steps[a]);
+    if(a===0) ctx.moveTo(pa[0],pa[1]); else ctx.lineTo(pa[0],pa[1]);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = '#e2703a';
+  ctx.lineWidth = 2.6;
+  ctx.stroke();
+  ctx.restore();
+
+  // 途经点
+  for(var b=1;b<steps.length;b++){
+    var pb = pt(steps[b]);
+    ctx.beginPath();
+    ctx.arc(pb[0], pb[1], 3, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(226,112,58,.85)';
+    ctx.fill();
+  }
+}
+
+function profileTop(surface){
+  var dom = surface.domain, vTop = 1e-6;
+  for(var i=0;i<=60;i++){
+    var x = dom.x[0] + (dom.x[1]-dom.x[0])*i/60;
+    var v = surface.f(x,0);
+    if(v > vTop) vTop = v;
+  }
+  return vTop*1.12;
+}
+
+function drawEgg(){
+  var level = currentLevel();
+  var surface = currentSurface();
+  var steps = S.steps;
+  var st = steps.length ? steps[steps.length-1] : { p: surface.start, loss: surface.f(surface.start[0], surface.start[1]), grad: surface.grad(surface.start[0], surface.start[1]) };
+  var target;
+  if(level.view === '1d'){
+    var vTop = profileTop(surface);
+    target = mapProfile(surface, st.p[0], surface.f(st.p[0],0), vTop);
+    target[1] -= 16;
+  }else{
+    target = mapTopo(surface, st.p[0], st.p[1]);
+  }
+  if(!S.display) S.display = [target[0], target[1]];
+  S.display[0] += (target[0]-S.display[0])*0.22;
+  S.display[1] += (target[1]-S.display[1])*0.22;
+
+  var mood = 'idle';
+  if(S.outcome === 'converged') mood = 'win';
+  else if(S.outcome === 'diverged' || S.outcome === 'oscillating') mood = 'fail';
+  else if(steps.length > 1) mood = 'move';
+
+  drawEggShape(S.display[0], S.display[1], 13, mood);
+
+  // 梯度箭头
+  var g = st.grad;
+  var gl = Math.hypot(g[0], g[1]);
+  if(gl > 1e-6 && level.view === '2d'){
+    var norm = Math.min(1, gl/6);
+    var len = 18 + norm*46;
+    var dx = -g[0]/gl, dy = -g[1]/gl;
+    var p0 = target;
+    var p1 = [p0[0] + dx*len, p0[1] - dy*len];
+    ctx.save();
+    ctx.strokeStyle = 'rgba(20,50,40,.75)';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(p0[0],p0[1]); ctx.lineTo(p1[0],p1[1]); ctx.stroke();
+    var ang = Math.atan2(p1[1]-p0[1], p1[0]-p0[0]);
+    ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1]);
+    ctx.lineTo(p1[0]-8*Math.cos(ang-0.4), p1[1]-8*Math.sin(ang-0.4));
+    ctx.lineTo(p1[0]-8*Math.cos(ang+0.4), p1[1]-8*Math.sin(ang+0.4));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(20,50,40,.75)'; ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawEggShape(x, y, r, mood){
+  ctx.save();
+  ctx.translate(x, y);
+  // 影子
+  ctx.beginPath();
+  ctx.ellipse(0, r*0.95, r*0.72, r*0.2, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(20,45,35,.18)';
+  ctx.fill();
+  // 身体
+  ctx.beginPath();
+  ctx.ellipse(0, 0, r*0.82, r, 0, 0, Math.PI*2);
+  var bodyG = ctx.createLinearGradient(-r, -r, r, r);
+  bodyG.addColorStop(0, '#414a4f');
+  bodyG.addColorStop(1, '#1f2426');
+  ctx.fillStyle = bodyG;
+  ctx.fill();
+  // 高光
+  ctx.beginPath();
+  ctx.ellipse(-r*0.3, -r*0.32, r*0.18, r*0.28, -0.45, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,.42)';
+  ctx.fill();
+  // 眼睛
+  if(mood === 'fail'){
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    [-1,1].forEach(function(s){
+      var ex = s*r*0.3;
+      ctx.beginPath();
+      ctx.moveTo(ex-r*0.12, -r*0.15); ctx.lineTo(ex+r*0.12, r*0.05);
+      ctx.moveTo(ex+r*0.12, -r*0.15); ctx.lineTo(ex-r*0.12, r*0.05);
+      ctx.stroke();
+    });
+  }else if(mood === 'win'){
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+    [-1,1].forEach(function(s){
+      var ex = s*r*0.3;
+      ctx.beginPath();
+      ctx.arc(ex, r*0.02, r*0.14, Math.PI*1.15, Math.PI*1.85);
+      ctx.stroke();
+    });
+  }else{
+    [-1,1].forEach(function(s){
+      var ex = s*r*0.3;
+      ctx.beginPath(); ctx.arc(ex, -r*0.08, r*0.19, 0, Math.PI*2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.beginPath(); ctx.arc(ex + (mood==='move'? s*r*0.05 : 0), -r*0.04, r*0.1, 0, Math.PI*2);
+      ctx.fillStyle = '#1c2022'; ctx.fill();
+    });
+  }
+  ctx.restore();
+}
+
+var rafId = null;
+function loop(){
+  var level = currentLevel();
+  ctx.clearRect(0,0,cssW,cssH);
+  if(level.view === '1d') drawProfile(); else drawTopo();
+  drawTrail();
+  drawEgg();
+  rafId = requestAnimationFrame(loop);
+}
+
+/* 损失曲线小图 */
+function drawChart(){
+  var w = chartCanvas.parentElement.clientWidth || 300;
+  var h = chartCanvas.parentElement.clientHeight || 96;
+  chartCanvas.width = Math.round(w*dpr);
+  chartCanvas.height = Math.round(h*dpr);
+  chartCtx.setTransform(dpr,0,0,dpr,0,0);
+  chartCtx.clearRect(0,0,w,h);
+
+  var steps = S.steps;
+  chartCtx.fillStyle = 'rgba(90,110,100,.5)';
+  chartCtx.font = '11px system-ui,sans-serif';
+  if(steps.length < 2){
+    chartCtx.fillText('损失曲线（走两步后出现）', 10, 18);
+    return;
+  }
+  var vals = steps.map(function(s){ return s.loss; });
+  var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+  var pad = 8;
+  var span = (mx - mn) || 1;
+  chartCtx.beginPath();
+  for(var i=0;i<vals.length;i++){
+    var x = pad + (i/(steps.length-1))*(w-pad*2);
+    var y = h - pad - ((vals[i]-mn)/span)*(h-pad*2);
+    if(i===0) chartCtx.moveTo(x,y); else chartCtx.lineTo(x,y);
+  }
+  chartCtx.strokeStyle = '#e2703a';
+  chartCtx.lineWidth = 2;
+  chartCtx.stroke();
+  chartCtx.fillStyle = 'rgba(90,110,100,.6)';
+  chartCtx.fillText('最高 ' + fmtLoss(mx), pad, 12);
+  chartCtx.fillText('最低 ' + fmtLoss(mn), pad, h-4);
+}
+
+/* =========================================================
+   7. 游戏流程
+   ========================================================= */
+function resetRun(silent){
+  var level = currentLevel();
+  var surface = currentSurface();
+  S.steps = [{
+    t:0,
+    p:[surface.start[0], surface.start[1]],
+    loss: surface.f(surface.start[0], surface.start[1]),
+    grad: surface.grad(surface.start[0], surface.start[1])
+  }];
+  S.outcome = 'running';
+  S.auto = false;
+  S.autoAcc = 0;
+  S.diagAnswered = false;
+  S.display = null;
+  elBtnAuto.textContent = '连续走';
+  elDiag.hidden = true;
+  if(!silent) updatePanel();
+  drawChart();
+}
+
+function startLevel(index){
+  S.levelIndex = index;
+  var level = currentLevel();
+  elLevelName.textContent = level.name;
+  elLevelTag.textContent = level.tag;
+  elLevelTag.className = 'badge' + (level.tag === '挑战' ? ' challenge' : level.tag === '对比' ? ' compare' : level.tag === '诊断' ? ' diagnose' : '');
+  elLevelGoal.textContent = level.goal;
+  elLr.min = 0; elLr.max = 1000;
+  elLr.value = Math.round(lrToT(level.lrStart, level)*1000);
+  applyLrUi();
+
+  var f = '';
+  for(var i=0;i<level.formula.length;i++){
+    f += '<code>' + level.formula[i] + '</code>';
+  }
+  elFormula.innerHTML = f;
+
+  elLegend.innerHTML = '';
+  if(level.kind === 'compare'){
+    elLegend.innerHTML = '<span><i style="background:#3a7bd5"></i>α = 0.05（太小）</span>'
+      + '<span><i style="background:#e2703a"></i>α = 0.45（稳但很慢）</span>'
+      + '<span><i style="background:#c94a3d"></i>α = 1.8（太大）</span>';
+    elLr.disabled = true;
+    elBtnStep.disabled = true;
+    elBtnAuto.disabled = true;
+  }else{
+    elLr.disabled = false;
+    elBtnStep.disabled = false;
+    elBtnAuto.disabled = false;
+    elBtnStep.textContent = '走一步（空格）';
+    elBtnAuto.textContent = '连续走';
+  }
+
+  S.compare = null;
+  resetRun(true);
+  buildBg();
+  drawChart();
+
+  if(level.kind === 'compare') startCompare();
+  updatePanel();
+  renderLevelList();
+  showVerdict('info', '本关任务', level.goal);
+}
+
+function startCompare(){
+  var level = currentLevel();
+  var surface = currentSurface();
+  var cfg = { maxSteps: level.maxSteps, tolLoss: level.tolLoss, gradTol: level.gradTol };
+  S.compare = level.compareLrs.map(function(lr){
+    return runToEnd(surface, lr, cfg, level.maxSteps);
+  });
+  S.steps = [];
+  elRState.textContent = '对比中';
+  elVerdict.className = 'verdict info';
+  elVerdict.innerHTML = '<b>三条轨迹已经跑完</b>蓝线步子太小，几乎没动；橙线稳但很慢；红线在谷底两侧来回弹，最后飞出去。点「我看明白了」继续。';
+  elBtnStep.disabled = false;
+  elBtnStep.textContent = '我看明白了';
+}
+
+function finishCompare(){
+  S.outcome = 'converged';
+  if(S.save.cleared.indexOf('L5') < 0) S.save.cleared.push('L5');
+  unlockNotes(['n5']);
+  writeSave();
+  renderLevelList();
+  updatePanel();
+  elBtnStep.textContent = '走一步（空格）';
+  showVerdict('ok', '看明白了', '同一个峡谷，学习率不同结局完全不同：太小走不动，太大直接飞出去。');
+  nextLevelHint();
+  toast('通关：三条轨迹对比');
+}
+
+function doStep(){
+  var level = currentLevel();
+  if(S.outcome !== 'running'){
+    resetRun();
+    return;
+  }
+  var surface = currentSurface();
+  var prev = S.steps[S.steps.length-1];
+  var nx = stepOnce(surface, prev.p, S.lr);
+  S.steps.push({ t:S.steps.length, p:nx.p, loss:nx.loss, grad:nx.grad });
+  if(S.steps.length > 400) S.steps.shift();
+
+  var cfg = { maxSteps: level.maxSteps, tolLoss: level.tolLoss, gradTol: level.gradTol };
+  var out = judge(S.steps, surface, cfg);
+  S.outcome = out;
+  updatePanel();
+  drawChart();
+
+  var diagPending = level.kind === 'diagnose' && !S.diagAnswered;
+  if(out !== 'running' && !diagPending) settle(out);
+  if(diagPending && (S.steps.length-1 >= level.askAt || out !== 'running') && elDiag.hidden) showDiag();
+}
+
+function settle(out){
+  var level = currentLevel();
+  S.auto = false;
+  elBtnAuto.textContent = '连续走';
+
+  if(out === 'converged'){
+    if(level.localWin){
+      showVerdict('ok', '到达谷底', '你找到了一个山谷。不过要提醒一句：这片地形里还有更低的谷，梯度下降找到的往往只是“附近最低”。');
+    }else{
+      showVerdict('ok', '成功下山', '损失值降到了谷底附近。学习率选得不错。');
+    }
+    winLevel();
+  }else if(out === 'oscillating'){
+    unlockAchievement('a4');
+    unlockNotes(['n8']);
+    showVerdict('bad', '在谷底两侧来回弹', '步子迈太大了：一步跨过谷底，下一步又跨回来。把学习率调小一点试试。');
+  }else if(out === 'diverged'){
+    showVerdict('bad', '飞出去了', '学习率太大，每走一步都越走越远，最后冲出地图。这就是“发散”。');
+  }else if(out === 'stalled'){
+    unlockNotes(['n4']);
+    var surface = currentSurface();
+    var startLoss = surface.f(surface.start[0], surface.start[1]);
+    var curLoss = S.steps[S.steps.length-1].loss;
+    if(level.localWin && curLoss < startLoss*0.4){
+      showVerdict('ok', '找到了一个山谷', '蛋小黑走进了一个谷底。但请注意：这片地形里还有更低的谷——梯度下降只保证往低处走，不保证走到最低处。');
+      winLevel();
+      return;
+    }
+    var msg;
+    if(level.surfaceId === 'plateau') msg = '平台区太平了，梯度接近 0，蛋小黑以为“到了”，其实还在半山腰。学习率需要更大一点。';
+    else if(level.surfaceId === 'multi') msg = '蛋小黑停在一个山谷里，但它不是整片地形最低的那个谷——这是“局部最小”。';
+    else if(level.surfaceId === 'saddle') msg = '梯度已经很小，但损失值并没有降到最低。这里可能是鞍点。';
+    else msg = '步数用完了还没到谷底。步子太小，或者步数不够。';
+    showVerdict('bad', '卡住了', msg);
+  }
+}
+
+function winLevel(){
+  var level = currentLevel();
+  if(S.save.cleared.indexOf(level.id) < 0) S.save.cleared.push(level.id);
+
+  var stepsUsed = S.steps.length - 1;
+  if(S.outcome === 'converged' || level.localWin){
+    if(stepsUsed <= 2) unlockAchievement('a2');
+    if(stepsUsed >= level.maxSteps*0.8) unlockAchievement('a3');
+    if(!hasFails()) unlockAchievement('a1');
+  }
+  unlockNotes(level.notes || []);
+  if(S.save.cleared.length >= LEVELS.length) unlockAchievement('a5');
+
+  writeSave();
+  renderLevelList();
+  updateClearCount();
+  nextLevelHint();
+  toast('通关：' + level.name);
+}
+
+function hasFails(){
+  // 本轮是否出现过非收敛的中间判定：用轨迹是否跨过谷底两侧来判断
+  var surface = currentSurface();
+  var flips = 0;
+  for(var i=1;i<S.steps.length;i++){
+    if(Math.sign(S.steps[i-1].p[0]-surface.min[0]) !== Math.sign(S.steps[i].p[0]-surface.min[0])) flips++;
+    if(Math.sign(S.steps[i-1].p[1]-surface.min[1]) !== Math.sign(S.steps[i].p[1]-surface.min[1])) flips++;
+  }
+  return flips >= 3;
+}
+
+function nextLevelHint(){
+  if(S.levelIndex < LEVELS.length-1){
+    showToastOnce('下一关已解锁：' + LEVELS[S.levelIndex+1].name);
+  }else{
+    showToastOnce('全部关卡完成！');
+  }
+}
+
+function unlockAchievement(id){
+  if(S.save.achievements.indexOf(id) >= 0) return;
+  S.save.achievements.push(id);
+  writeSave();
+  toast('成就解锁：' + ACHS[id].t);
+}
+
+function unlockNotes(ids){
+  var added = [];
+  (ids || []).forEach(function(id){
+    if(S.save.notes.indexOf(id) < 0){ S.save.notes.push(id); added.push(id); }
+  });
+  if(added.length){
+    writeSave();
+    toast('探险笔记 +' + added.length);
+  }
+}
+
+function updatePanel(){
+  var level = currentLevel();
+  var surface = currentSurface();
+  var st = S.steps.length ? S.steps[S.steps.length-1] : null;
+  elRStep.textContent = String(Math.max(0, S.steps.length-1)) + ' / ' + level.maxSteps;
+  elRLoss.textContent = st ? fmtLoss(st.loss) : '—';
+  elRGrad.textContent = st ? Math.hypot(st.grad[0], st.grad[1]).toFixed(2) : '—';
+  var map = { running:'下山中', converged:'到谷底了', oscillating:'震荡中', diverged:'飞出去了', stalled:'卡住了' };
+  elRState.textContent = map[S.outcome] || '待出发';
+  if(level.kind === 'compare' && S.compare) elRState.textContent = '对比中';
+  else if(S.steps.length <= 1) elRState.textContent = '待出发';
+  updateClearCount();
+}
+
+function updateClearCount(){
+  elClearCount.textContent = S.save.cleared.length;
+}
+
+function showVerdict(kind, title, text){
+  elVerdict.className = 'verdict ' + kind;
+  elVerdict.innerHTML = '<b>' + title + '</b>' + text;
+}
+
+var toastTimer = null;
+function toast(msg){
+  elToast.textContent = msg;
+  elToast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ elToast.classList.remove('show'); }, 2200);
+}
+function showToastOnce(msg){ toast(msg); }
+
+/* 诊断面板 */
+function showDiag(){
+  var level = currentLevel();
+  if(level.kind !== 'diagnose') return;
+  elDiagTitle.textContent = level.question.title;
+  elDiagDesc.textContent = level.question.desc;
+  elDiagOpts.innerHTML = '';
+  level.question.options.forEach(function(opt){
+    var b = document.createElement('button');
+    b.textContent = opt.text;
+    b.onclick = function(){ answerDiag(opt); };
+    elDiagOpts.appendChild(b);
+  });
+  elDiag.hidden = false;
+}
+
+function answerDiag(opt){
+  elDiag.hidden = true;
+  if(opt.ok){
+    S.diagAnswered = true;
+    showVerdict('ok', '判断正确', opt.tip + ' 记住：梯度为 0 只说明“脚下很平”，不代表“这是最低点”。');
+    unlockAchievement('a6');
+    S.outcome = 'converged';
+    winLevel();
+    drawChart();
+  }else{
+    showVerdict('bad', '再想想', opt.tip + ' 提示：看看损失值的变化方向，以及球往哪个方向跑。再走一步，题目会重新出现。');
+  }
+}
+
+/* =========================================================
+   8. 关卡列表 / 弹窗
+   ========================================================= */
+function renderLevelList(){
+  elLevelList.innerHTML = '';
+  LEVELS.forEach(function(lv, i){
+    var b = document.createElement('button');
+    b.className = 'lv' + (i === S.levelIndex ? ' active' : '') + (S.save.cleared.indexOf(lv.id) >= 0 ? ' done' : '');
+    var no = document.createElement('span');
+    no.className = 'no';
+    no.textContent = S.save.cleared.indexOf(lv.id) >= 0 ? '✓' : String(i+1);
+    var nm = document.createElement('span');
+    nm.className = 'nm';
+    nm.textContent = lv.name;
+    var st = document.createElement('span');
+    st.className = 'st';
+    st.textContent = lv.tag;
+    b.appendChild(no); b.appendChild(nm); b.appendChild(st);
+    b.onclick = function(){ startLevel(i); };
+    elLevelList.appendChild(b);
+  });
+  updateClearCount();
+}
+
+var modal = document.getElementById('modal');
+var modalTitle = document.getElementById('modalTitle');
+var modalSub = document.getElementById('modalSub');
+var modalBody = document.getElementById('modalBody');
+function openModal(title, sub, html){
+  modalTitle.textContent = title;
+  modalSub.textContent = sub || '';
+  modalBody.innerHTML = html;
+  modal.hidden = false;
+}
+function closeModal(){ modal.hidden = true; }
+document.getElementById('modalClose').onclick = closeModal;
+modal.addEventListener('click', function(e){ if(e.target === modal) closeModal(); });
+
+document.getElementById('btnNotes').onclick = function(){
+  var html = '';
+  NOTE_ORDER.forEach(function(id){
+    var n = NOTES[id];
+    var got = S.save.notes.indexOf(id) >= 0;
+    html += '<div class="note-item' + (got ? '' : ' locked') + '"><b>' + (got ? n.t : '？？？') + '</b>'
+      + (got ? n.c : '继续闯关或触发对应情况后解锁。') + '</div>';
+  });
+  openModal('探险笔记', '已解锁 ' + S.save.notes.length + ' / ' + NOTE_ORDER.length + ' 条', html);
+};
+
+document.getElementById('btnAch').onclick = function(){
+  var html = '<div class="ach-grid">';
+  Object.keys(ACHS).forEach(function(id){
+    var got = S.save.achievements.indexOf(id) >= 0;
+    html += '<div class="ach' + (got ? '' : ' locked') + '"><b>' + (got ? ACHS[id].t : '未解锁') + '</b>'
+      + ACHS[id].c + '</div>';
+  });
+  html += '</div>';
+  openModal('成就', '已解锁 ' + S.save.achievements.length + ' / ' + Object.keys(ACHS).length, html);
+};
+
+document.getElementById('btnHelp').onclick = function(){
+  var html = '<h4>你在做什么</h4>'
+    + '<ul><li>蛋小黑站在山坡上，山坡的高度就是<b>损失值</b>，越低越好。</li>'
+    + '<li>每次点「走一步」，它都会朝<b>梯度反方向</b>（也就是下坡方向）走一段。</li>'
+    + '<li>走多远由<b>学习率 α</b> 决定。α 太小会磨蹭，太大会跨过谷底甚至飞出去。</li></ul>'
+    + '<h4>操作</h4>'
+    + '<ul><li>拖动滑块调学习率；点「走一步」前进；「连续走」自动前进；「重来」回到起点。</li>'
+    + '<li>键盘：空格 = 走一步，R = 重来。</li></ul>'
+    + '<h4>怎么算赢</h4>'
+    + '<ul><li>损失值降到谷底附近就算通关，并解锁下一关和一条探险笔记。</li>'
+    + '<li>失败没有任何惩罚，随便试。</li></ul>';
+  openModal('怎么玩', '一句话：调学习率，让蛋小黑走到谷底', html);
+};
+
+/* 键盘 */
+document.addEventListener('keydown', function(e){
+  if(e.code === 'Space'){
+    e.preventDefault();
+    if(elBtnStep.disabled) return;
+    if(currentLevel().kind === 'compare'){ finishCompare(); return; }
+    doStep();
+  }else if(e.key === 'r' || e.key === 'R'){
+    resetRun();
+  }else if(e.key === 'Escape'){
+    closeModal();
+  }
+});
+
+/* 自动播放：时间累加器，不受刷新率影响 */
+function tickAuto(dt){
+  if(!S.auto) return;
+  S.autoAcc += dt;
+  var interval = 380;
+  while(S.autoAcc >= interval){
+    S.autoAcc -= interval;
+    if(S.outcome !== 'running'){ S.auto = false; elBtnAuto.textContent = '连续走'; break; }
+    doStep();
+  }
+}
+
+elLr.addEventListener('input', function(){ applyLrUi(); });
+elBtnStep.addEventListener('click', function(){
+  if(elBtnStep.disabled) return;
+  if(currentLevel().kind === 'compare'){ finishCompare(); return; }
+  doStep();
+});
+elBtnAuto.addEventListener('click', function(){
+  if(currentLevel().kind === 'compare') return;
+  if(S.outcome !== 'running') resetRun();
+  S.auto = !S.auto;
+  S.autoAcc = 0;
+  elBtnAuto.textContent = S.auto ? '暂停' : '连续走';
+});
+elBtnReset.addEventListener('click', function(){ resetRun(); });
+
+/* =========================================================
+   9. 启动
+   ========================================================= */
+function boot(){
+  loadSave();
+  startLevel(0);
+  resize();
+  var last = performance.now();
+  function frame(ts){
+    var dt = Math.min(120, ts - last);
+    last = ts;
+    tickAuto(dt);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  loop();
+
+  var ro = new ResizeObserver(function(){ resize(); });
+  ro.observe(canvas.parentElement);
+  window.addEventListener('resize', function(){ resize(); });
+}
+
+boot();
+</script>
+</body>
+</html>
